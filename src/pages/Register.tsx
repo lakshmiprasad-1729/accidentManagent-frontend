@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, User, Phone, Factory } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, Phone, Factory, Check, AlertTriangle } from 'lucide-react';
 import { RegisterUser } from '../axios/axios';
 import { User as typeUser} from '../store/authStore';
+import emailJs from "@emailjs/browser"
 
 interface DataResponse{
   status:boolean,
@@ -26,6 +27,15 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  
+  // OTP related states
+  const [otp, setOtp] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [isOtpLoading, setIsOtpLoading] = useState(false);
+  const [isOtpVerificationLoading, setIsOtpVerificationLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [serverOtp,setServerOtp] = useState('');
 
   const navigate = useNavigate();
 
@@ -46,6 +56,10 @@ const Register = () => {
       newErrors.email = 'Email is invalid';
     }
 
+    if (!isOtpVerified) {
+      newErrors.email = 'Please verify your email with OTP';
+    }
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
@@ -62,6 +76,83 @@ const Register = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+   function generateOtp(digits: number): number {
+  const min = Math.pow(10, digits - 1);
+  const max = Math.pow(10, digits) - 1;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+  const handleSendOtp = async () => {
+    if (!formData.email) {
+      setErrors(prev => ({ ...prev, email: 'Email is required to send OTP' }));
+      return;
+    }
+    
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setErrors(prev => ({ ...prev, email: 'Please enter a valid email' }));
+      return;
+    }
+
+    setIsOtpLoading(true);
+    setOtpError('');
+
+    const otpcode =generateOtp(4);
+    const templateParams ={
+      passcode:otpcode,
+      email:formData.email
+    }
+
+
+    emailJs
+    .send(import.meta.env.VITE_EMAILJS_SERVICE_OTP_ID,import.meta.env.VITE_EMAILJS_TEMPLATE_OTP_ID, templateParams, {
+      publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_OTP_KEY,
+    })
+    .then(
+      () => {
+               setIsOtpSent(true);
+               setServerOtp(otpcode.toString());
+      alert('OTP sent to your email successfully!');
+      },
+      (error) => {
+        console.log(error);
+        alert('Failed to send OTP. Please try again.');
+      },
+    );
+    setIsOtpLoading(false);
+
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setOtpError('Please enter the OTP');
+      return;
+    }
+
+    setIsOtpVerificationLoading(true);
+    setOtpError('');
+
+    try {
+      if (serverOtp == otp) {
+        setIsOtpVerified(true);
+        setIsOtpSent(false);
+        setOtp('');
+        if (errors.email) {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors.email;
+            return newErrors;
+          });
+        }
+      } else {
+        setOtpError('Invalid OTP. Please try again.');
+      }
+    } catch (error) {
+      setOtpError('Verification failed. Please try again.');
+    } finally {
+      setIsOtpVerificationLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,11 +200,13 @@ const Register = () => {
         confirmPassword:''
       })
       
+      // Reset OTP states
+      setIsOtpVerified(false);
+      setIsOtpSent(false);
+      setOtp('');
+      setOtpError('');
 
       setIsLoading(false);
-    
-    // Simulate API call
-    
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -129,6 +222,21 @@ const Register = () => {
         ...prev,
         [name]: ''
       }));
+    }
+
+    // Reset OTP verification if email changes
+    if (name === 'email' && isOtpVerified) {
+      setIsOtpVerified(false);
+      setIsOtpSent(false);
+      setOtp('');
+      setOtpError('');
+    }
+  };
+
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOtp(e.target.value);
+    if (otpError) {
+      setOtpError('');
     }
   };
 
@@ -197,29 +305,100 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Email Field */}
+            {/* Email Field with OTP */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={isOtpVerified}
+                    className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                      errors.email ? 'border-red-300 bg-red-50' : 
+                      isOtpVerified ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                    } ${isOtpVerified ? 'cursor-not-allowed' : ''}`}
+                    placeholder="your.email@company.com"
+                  />
+                  {isOtpVerified && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <Check className="h-5 w-5 text-green-500" />
+                    </div>
+                  )}
                 </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                  placeholder="your.email@company.com"
-                />
+                
+                {!isOtpVerified && (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={isOtpLoading || !formData.email}
+                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
+                  >
+                    {isOtpLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span className="text-sm">Sending...</span>
+                      </>
+                    ) : (
+                      <span className="text-sm">Send OTP</span>
+                    )}
+                  </button>
+                )}
               </div>
+              
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
+
+              {/* OTP Input Field */}
+              {isOtpSent && !isOtpVerified && (
+                <div className="mt-3">
+                  <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                    Enter OTP
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="otp"
+                      name="otp"
+                      type="text"
+                      value={otp}
+                      onChange={handleOtpChange}
+                      maxLength={6}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      placeholder="Enter 6-digit OTP"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={isOtpVerificationLoading || !otp.trim()}
+                      className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {isOtpVerificationLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span className="text-sm">Verifying...</span>
+                        </>
+                      ) : (
+                        <span className="text-sm">Verify OTP</span>
+                      )}
+                    </button>
+                  </div>
+                  
+                  {otpError && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <p className="text-sm text-red-600">{otpError}</p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -322,7 +501,7 @@ const Register = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !isOtpVerified}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
             >
               {isLoading ? (
