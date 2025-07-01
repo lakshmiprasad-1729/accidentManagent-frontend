@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User, Phone, Factory, Check, AlertTriangle } from 'lucide-react';
 import { RegisterUser } from '../axios/axios';
 import { User as typeUser} from '../store/authStore';
 import emailJs from "@emailjs/browser"
+import localStorageService from '../manageLocalStorage/localStorage';
 
 interface DataResponse{
   status:boolean,
@@ -38,6 +39,14 @@ const Register = () => {
   const [serverOtp,setServerOtp] = useState('');
 
   const navigate = useNavigate();
+
+  useEffect(()=>{
+      const userdetails = localStorageService.getData();
+
+      if(userdetails){
+          if(userdetails.status) navigate("/");
+      }
+  },[])
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};

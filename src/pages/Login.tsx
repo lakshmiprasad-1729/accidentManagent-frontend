@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Factory } from 'lucide-react';
 import { Login as authLogin, axiosLoginResponse, getUserDetails } from "../axios/axios"
@@ -19,6 +19,15 @@ const Login = () => {
   const navigate = useNavigate();
   
   const dispatch = useAppDispatch();
+
+    useEffect(()=>{
+      const userdetails = localStorageService.getData();
+
+      if(userdetails){
+          if(userdetails.status) navigate("/");
+      }
+  },[])
+
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
