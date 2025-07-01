@@ -202,6 +202,15 @@ const Contact: React.FC = () => {
           alert('Failed to send inquiry. Please try again.');
         },
       );
+
+      setFormData({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+    department: ''
+  });
      
     setTimeout(() => {
       setShowSuccess(false);
