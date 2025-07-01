@@ -4,13 +4,16 @@ import { RegisterResponse } from '../pages/Register';
 
 const api:AxiosInstance = axios.create({
     baseURL:'https://accidentmanagement-production.up.railway.app',
-     timeout: 20000,
+     timeout: 200000,
     withCredentials: true, 
     headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     },
 })
+
+//https://accidentmanagement-production.up.railway.app
+//https://accidentmanagement-production.up.railway.app
 
 api.interceptors.request.use(
     (config) => {
