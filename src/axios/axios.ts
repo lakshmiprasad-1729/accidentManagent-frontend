@@ -3,8 +3,8 @@ import localStorageService, { JsonResponse } from '../manageLocalStorage/localSt
 import { RegisterResponse } from '../pages/Register';
 
 const api:AxiosInstance = axios.create({
-    baseURL:'https://accidentmanagement-production.up.railway.app',
-     timeout: 200000,
+    baseURL:'https://accidentmanagement.onrender.com',
+    timeout: 200000,
     withCredentials: true, 
     headers: {
     'Content-Type': 'application/json',
