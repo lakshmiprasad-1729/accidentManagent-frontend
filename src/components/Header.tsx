@@ -106,12 +106,13 @@ const Header = () => {
             <nav className="space-y-2">
               {navLinks.map((link) => {
                 const Icon = link.icon;
+                  const to = link.to;
                 return (
                   <Link
                     key={link.to}
                     to={link.to}
                     onClick={() => setIsMenuOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`${ to == "/add-admin"?(adminStatus && user?"flex":"hidden"):"flex"} items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive(link.to)
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
@@ -126,17 +127,23 @@ const Header = () => {
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="block px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600"
+                  className={`block px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 ${userLoginStatus?"hidden":"flex"}`}
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsMenuOpen(false)}
-                  className="block px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className={`block px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${userLoginStatus?"hidden":"flex"}`}
                 >
                   Register
                 </Link>
+                 <button
+             onClick={handleLogOut}
+              className={`bg-red-600 ${userLoginStatus?"flex":"hidden"} hover:bg-red-700 active:bg-red-800 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2`}
+            >
+              Logout
+            </button>
               </div>
             </nav>
           </div>
