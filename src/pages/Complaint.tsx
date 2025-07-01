@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Upload, MapPin, AlertTriangle, CheckCircle, Clock, User } from 'lucide-react';
-import { createAPost, getAllPosts, getUserDetails, getUserPosts } from '../axios/axios';
+import { createAPost, getAllAdminEmails, getAllPosts, getUserDetails, getUserPosts } from '../axios/axios';
 import localStorageService from '../manageLocalStorage/localStorage';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../store/hooks';
+import emailJs from "@emailjs/browser"
 
 interface Complaint {
   id: string;
@@ -180,6 +181,47 @@ const handleSubmit = async (e: React.FormEvent) => {
 
         
               if (response.status ==200) {
+                 if(formData.priority == "high" || formData.priority == "urgent"){
+                  const emails = await getAllAdminEmails();
+                  
+                  console.log(emails);
+                  if(typeof emails == "object"){
+                    if(emails.data!=null && typeof emails.data != "string"){
+                       
+                      const adminEmails:string[] = emails.data;
+
+                      if(adminEmails.length != 0){
+                        const recipientEmails = Array.isArray(adminEmails) ? adminEmails.join(',') : adminEmails;
+
+                             const templateParams = {
+                             email: recipientEmails,
+                             title:formData.title,
+                              description:formData.description,
+                              category:formData.category,
+                              priority:formData.priority,
+                              submittedBy:formData.submittedBy,
+                              address: formData.submittedBy
+                              };
+
+
+                             emailJs
+                              .send(import.meta.env.VITE_EMAILJS_SERVICE_ID,import.meta.env.VITE_EMAILJS_TEMPLATEE_ID, templateParams, {
+                                publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+                              })
+                              .then(
+                                () => {
+                                    alert('info sent to admins');
+                                },
+                                (error) => {
+                                  console.error('Failed to send inquiry:', error);
+                                  alert('Failed to info to admins.');
+                                },
+                              );
+                      }
+
+                     }
+                  }
+                 }
                 alert("submitted successfully");
                 
                 setShowSuccess(true);

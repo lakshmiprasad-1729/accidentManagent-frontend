@@ -1,8 +1,35 @@
-import React, { useState } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, Factory, MessageSquare } from 'lucide-react';
+import React, { useState, ChangeEvent } from 'react';
+import { MapPin, Phone, Mail, Clock, Send, Factory, MessageSquare, AlertCircle } from 'lucide-react';
+import emailjs from '@emailjs/browser'
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
+// Type definitions
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  department: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  message?: string;
+  department?: string;
+}
+
+interface ContactInfo {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  details: string[];
+  color: string;
+}
+
+const Contact: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phone: '',
@@ -10,10 +37,11 @@ const Contact = () => {
     message: '',
     department: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const departments = [
+  const departments: string[] = [
     'General Inquiry',
     'Human Resources',
     'Administration',
@@ -24,7 +52,7 @@ const Contact = () => {
     'Public Relations'
   ];
 
-  const contactInfo = [
+  const contactInfo: ContactInfo[] = [
     {
       icon: MapPin,
       title: 'Address',
@@ -67,38 +95,124 @@ const Contact = () => {
     }
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Validation function
+  const validateForm = (): FormErrors => {
+    const newErrors: FormErrors = {};
+
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters long';
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+    }
+
+    // Phone validation
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else {
+      // Remove any non-digit characters for validation
+      const cleanPhone = formData.phone.replace(/\D/g, '');
+      
+      if (cleanPhone.length !== 10) {
+        newErrors.phone = 'Phone number must be exactly 10 digits';
+      } else if (parseInt(cleanPhone[0]) < 6) {
+        newErrors.phone = 'Phone number must start with 6 or above';
+      }
+    }
+
+    // Department validation
+    if (!formData.department) {
+      newErrors.department = 'Please select a department';
+    }
+
+    // Subject validation
+    if (!formData.subject.trim()) {
+      newErrors.subject = 'Subject is required';
+    } else if (formData.subject.trim().length < 5) {
+      newErrors.subject = 'Subject must be at least 5 characters long';
+    }
+
+    // Message validation
+    if (!formData.message.trim()) {
+      newErrors.message = 'Message is required';
+    } else if (formData.message.trim().length < 10) {
+      newErrors.message = 'Message must be at least 10 characters long';
+    }
+
+    return newErrors;
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
+    // Clear error for this field when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (): Promise<void> => {
+    // Validate form
+    const validationErrors = validateForm();
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrors({});
 
-    // Simulate API call
+    const templateParams = {
+  name: formData.name,
+  email: formData.email,
+  phone: formData.phone,
+  subject: formData.subject,
+  message: formData.message,
+  department: formData.department,
+};
+
+     emailjs
+      .send(import.meta.env.VITE_EMAILJS_SERVICE_ID,import.meta.env.VITE_EMAILJS_TEMPLATE_ID, templateParams, {
+        publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+      })
+      .then(
+        () => {
+            alert('Inquiry submitted successfully!');
+        },
+        (error) => {
+          console.error('Failed to send inquiry:', error);
+          alert('Failed to send inquiry. Please try again.');
+        },
+      );
+     
     setTimeout(() => {
-      setIsSubmitting(false);
-      setShowSuccess(true);
-      
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: '',
-        department: ''
-      });
+      setShowSuccess(false);
+    }, 5000);
+  };
 
-      // Hide success message after 5 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 5000);
-    }, 2000);
+  const getInputClassName = (fieldName: keyof FormErrors): string => {
+    const baseClass = "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors";
+    return errors[fieldName] 
+      ? `${baseClass} border-red-500 bg-red-50` 
+      : `${baseClass} border-gray-300`;
   };
 
   return (
@@ -184,7 +298,7 @@ const Contact = () => {
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               {/* Name and Email */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -195,12 +309,17 @@ const Contact = () => {
                     type="text"
                     id="name"
                     name="name"
-                    required
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className={getInputClassName('name')}
                     placeholder="Your full name"
                   />
+                  {errors.name && (
+                    <div className="mt-2 flex items-center text-red-600 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.name}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -210,12 +329,17 @@ const Contact = () => {
                     type="email"
                     id="email"
                     name="email"
-                    required
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className={getInputClassName('email')}
                     placeholder="your.email@example.com"
                   />
+                  {errors.email && (
+                    <div className="mt-2 flex items-center text-red-600 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.email}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -223,7 +347,7 @@ const Contact = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
+                    Phone Number *
                   </label>
                   <input
                     type="tel"
@@ -231,9 +355,18 @@ const Contact = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    placeholder="+91-XXXXX-XXXXX"
+                    className={getInputClassName('phone')}
+                    placeholder="9876543210"
                   />
+                  {errors.phone && (
+                    <div className="mt-2 flex items-center text-red-600 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.phone}
+                    </div>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Enter 10-digit number starting with 6 or above
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
@@ -242,16 +375,21 @@ const Contact = () => {
                   <select
                     id="department"
                     name="department"
-                    required
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className={getInputClassName('department')}
                   >
                     <option value="">Select Department</option>
                     {departments.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
+                  {errors.department && (
+                    <div className="mt-2 flex items-center text-red-600 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.department}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -264,12 +402,17 @@ const Contact = () => {
                   type="text"
                   id="subject"
                   name="subject"
-                  required
                   value={formData.subject}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className={getInputClassName('subject')}
                   placeholder="Brief subject of your inquiry"
                 />
+                {errors.subject && (
+                  <div className="mt-2 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.subject}
+                  </div>
+                )}
               </div>
 
               {/* Message */}
@@ -280,18 +423,24 @@ const Contact = () => {
                 <textarea
                   id="message"
                   name="message"
-                  required
                   rows={6}
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className={getInputClassName('message')}
                   placeholder="Please provide detailed information about your inquiry..."
                 />
+                {errors.message && (
+                  <div className="mt-2 flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.message}
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
               >
@@ -307,7 +456,7 @@ const Contact = () => {
                   </>
                 )}
               </button>
-            </form>
+            </div>
           </div>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import axios ,{AxiosInstance,AxiosResponse} from 'axios';
-import localStorageService, { JsonResponse } from '../manageLocalStorage/localStorage';
+import localStorageService from '../manageLocalStorage/localStorage';
 import { RegisterResponse } from '../pages/Register';
 
 const api:AxiosInstance = axios.create({
@@ -156,6 +156,16 @@ const addAdmin=async(email:string)=>{
     }
 }
 
+const getAllAdminEmails=async()=>{
+     try {
+        const emails = await api.get(`/admin/get-admin-emails`);
+        return emails;
+    } catch (error) {
+          if( error instanceof Error) 
+        console.log(error.message);
+    }
+}
+
 
 export {
     RegisterUser,
@@ -166,5 +176,6 @@ export {
     getAllPosts,
     getPostById,
     updateStatusByAdmin,
-    addAdmin
+    addAdmin,
+    getAllAdminEmails
 }
