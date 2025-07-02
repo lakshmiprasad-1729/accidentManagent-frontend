@@ -414,7 +414,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   Supporting Image *
                 </label>
                 <p className='text-rose-800 text-[0.7rem] leading-[1.2rem]'>
-                  ( wait a 10 s to load image after selecting image)
+                  ( wait a 10 s to load image after selecting image and image size shouldnt exceed 500 kb)
                 </p>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
                   <input
